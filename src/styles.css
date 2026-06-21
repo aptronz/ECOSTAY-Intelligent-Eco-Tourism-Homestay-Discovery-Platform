@@ -7,9 +7,10 @@
 :root { color: #1d2824; background: #f5f6ed; font-family: "Manrope", sans-serif; }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; background: #f5f6ed; }
-button, input, select { font: inherit; }
+body { margin: 0; min-width: 320px; overflow-x: hidden; background: #f5f6ed; transition: background-color .2s ease, color .2s ease; }
+button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
 .font-display { font-family: "DM Serif Display", serif; }
 .container-page { width: min(1180px, calc(100% - 32px)); margin-inline: auto; }
 .glass { background: rgba(255,255,255,.92); backdrop-filter: blur(18px); }
@@ -19,6 +20,7 @@ button { cursor: pointer; }
 .hero-gradient { background: linear-gradient(90deg, rgba(9,31,23,.85) 0%, rgba(9,31,23,.5) 46%, rgba(9,31,23,.05) 85%); }
 .dark body, .dark { background: #0f1d18; color: #eef2e7; }
 .dark .page-surface { background: #0f1d18; }
+.dark .glass { background: rgba(23,39,33,.94); }
 .dark .paper { background: #172721; border-color: #294138; color: #eef2e7; }
 .dark .muted { color: #a8b9b1; }
 .range-accent { accent-color: #2e7d32; }

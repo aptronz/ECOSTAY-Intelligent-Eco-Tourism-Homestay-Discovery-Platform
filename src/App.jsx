@@ -1,16 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, BarChart3, CalendarDays, Check, ChevronDown, ChevronRight,
-  CircleUserRound, CloudSun, Compass, Download, Heart, Leaf, MapPin, Menu, MessageCircle,
-  Minus, Moon, Navigation, Plus, Search, Send, SlidersHorizontal, Sparkles, Star, Sun,
-  TentTree, Users, Wallet, X, Zap
+  CircleUserRound, Compass, Download, Heart, LayoutDashboard, Leaf, LogIn, MapPin, Menu,
+  Minus, Moon, Palette, Plus, Route as RouteIcon, Search, Send, SlidersHorizontal,
+  Sparkles, Star, Sun, TentTree, Users, X, Zap
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { destinations, experiences, properties } from "./data";
+import { fetchCatalog } from "./api";
+import {
+  destinations as fallbackDestinations,
+  experiences as fallbackExperiences,
+  properties as fallbackProperties,
+} from "./data";
+import useDarkMode from "./hooks/useDarkMode";
+import ComponentShowcase from "./pages/ComponentShowcase";
+import Login from "./pages/Login";
 
 const fadeUp = { initial: { opacity: 0, y: 18 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: .55 } };
+const fallbackCatalog = {
+  properties: fallbackProperties,
+  destinations: fallbackDestinations,
+  experiences: fallbackExperiences,
+};
+const CatalogContext = createContext(fallbackCatalog);
+const useCatalog = () => useContext(CatalogContext);
 const formatMoney = (value) => `₹${value.toLocaleString("en-IN")}`;
 
 function Logo() {
@@ -20,27 +35,37 @@ function Logo() {
   </Link>;
 }
 
-function Navbar({ dark, setDark }) {
+function Navbar() {
   const [open, setOpen] = useState(false);
-  const links = [["Explore", "/explore"], ["Experiences", "/experiences"], ["AI Planner", "/assistant"]];
+  const { isDark, toggleTheme } = useDarkMode();
+  const links = [
+    ["Explore", "/explore"],
+    ["Experiences", "/experiences"],
+    ["AI Planner", "/assistant"],
+    ["Itinerary", "/itinerary"],
+    ["UI Kit", "/component-showcase"],
+  ];
   return <header className="sticky top-0 z-50 border-b border-black/5 bg-[#f5f6ed]/90 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f1d18]/90">
     <div className="container-page flex h-[74px] items-center justify-between">
       <Logo />
-      <nav className="hidden items-center gap-8 md:flex">
+      <nav className="hidden items-center gap-5 xl:flex">
         {links.map(([label, href]) => <NavLink key={href} to={href} className={({isActive}) => `text-sm font-semibold transition hover:text-leaf ${isActive ? "text-leaf" : "text-ink dark:text-white"}`}>{label}</NavLink>)}
       </nav>
       <div className="flex items-center gap-2">
-        <button onClick={() => setDark(!dark)} aria-label="Toggle theme" className="grid h-10 w-10 place-items-center rounded-full border border-black/10 dark:border-white/15">
-          {dark ? <Sun size={18} /> : <Moon size={18} />}
+        <button onClick={toggleTheme} aria-label={`Switch to ${isDark ? "light" : "dark"} mode`} className="grid h-10 w-10 place-items-center rounded-full border border-black/10 dark:border-white/15">
+          {isDark ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-        <Link to="/dashboard" className="hidden items-center gap-2 rounded-full bg-forest px-4 py-2.5 text-sm font-bold text-white sm:flex dark:bg-lime dark:text-forest">
+        <Link to="/login" aria-label="Sign in" className="hidden h-10 w-10 place-items-center rounded-full border border-black/10 text-forest dark:border-white/15 dark:text-white sm:grid">
+          <LogIn size={18} />
+        </Link>
+        <Link to="/dashboard" className="hidden items-center gap-2 rounded-full bg-forest px-4 py-2.5 text-sm font-bold text-white md:flex dark:bg-lime dark:text-forest">
           <CircleUserRound size={18} /> My trips
         </Link>
-        <button onClick={() => setOpen(!open)} className="grid h-10 w-10 place-items-center md:hidden">{open ? <X /> : <Menu />}</button>
+        <button onClick={() => setOpen(!open)} aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} className="grid h-10 w-10 place-items-center xl:hidden">{open ? <X /> : <Menu />}</button>
       </div>
     </div>
-    <AnimatePresence>{open && <motion.nav initial={{height:0}} animate={{height:"auto"}} exit={{height:0}} className="overflow-hidden border-t border-black/5 bg-white dark:bg-[#172721] md:hidden">
-      <div className="container-page flex flex-col py-3">{links.map(([label, href]) => <Link onClick={() => setOpen(false)} className="py-3 font-semibold" key={href} to={href}>{label}</Link>)}<Link to="/dashboard" className="py-3 font-semibold">My trips</Link></div>
+    <AnimatePresence>{open && <motion.nav initial={{height:0}} animate={{height:"auto"}} exit={{height:0}} className="overflow-hidden border-t border-black/5 bg-white dark:bg-[#172721] xl:hidden">
+      <div className="container-page grid py-3 sm:grid-cols-2">{links.map(([label, href]) => <Link onClick={() => setOpen(false)} className="py-3 font-semibold" key={href} to={href}>{label}</Link>)}<Link onClick={() => setOpen(false)} to="/dashboard" className="py-3 font-semibold">Dashboard</Link><Link onClick={() => setOpen(false)} to="/login" className="py-3 font-semibold">Login</Link></div>
     </motion.nav>}</AnimatePresence>
   </header>;
 }
@@ -103,6 +128,7 @@ function SearchBar({ compact = false }) {
 }
 
 function Home() {
+  const { destinations, properties } = useCatalog();
   return <main>
     <section className="relative min-h-[690px] overflow-hidden">
       <img src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2000&q=88" className="absolute inset-0 h-full w-full object-cover" alt="A quiet cabin in a green mountain landscape"/>
@@ -154,6 +180,7 @@ function FilterPanel({ open, close, score, setScore }) {
 }
 
 function Explore() {
+  const { properties } = useCatalog();
   const [filters, setFilters] = useState(false);
   const [score, setScore] = useState(80);
   const shown = properties.filter(p=>p.score>=score);
@@ -166,6 +193,7 @@ function Explore() {
 }
 
 function PropertyDetails() {
+  const { properties } = useCatalog();
   const { id } = useParams();
   const property = properties.find(p=>p.id===id) || properties[0];
   const [guests,setGuests] = useState(2);
@@ -203,6 +231,7 @@ function Assistant() {
 }
 
 function Experiences() {
+  const { experiences } = useCatalog();
   const [active,setActive]=useState("All");
   const cats=["All","Adventure","Culture","Local food","Nature trail","Community"];
   const filtered=active==="All"?experiences:experiences.filter(e=>e.type.toLowerCase().includes(active.toLowerCase().split(" ")[0]));
@@ -224,10 +253,52 @@ function Itinerary() {
 
 const chartData=[{m:"Jan",v:12},{m:"Feb",v:18},{m:"Mar",v:16},{m:"Apr",v:27},{m:"May",v:32},{m:"Jun",v:44}];
 function Dashboard() {
+  const { properties } = useCatalog();
   return <main className="container-page py-10"><div className="mb-8 flex flex-wrap items-end justify-between gap-3"><div><p className="text-sm text-slate-500">Welcome back, Aditya</p><h1 className="font-display text-4xl text-forest dark:text-white md:text-5xl">Your greener journeys</h1></div><Link to="/itinerary" className="rounded-full bg-lime px-5 py-3 text-sm font-extrabold text-forest">Plan a new trip</Link></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[[TentTree,"4","Stays discovered"],[Leaf,"38 kg","CO₂ avoided"],[Users,"₹12.8k","Spent locally"],[Zap,"Silver","Impact level"]].map(([Icon,n,l])=><div className="paper rounded-[20px] bg-white p-5" key={l}><Icon className="text-leaf" size={20}/><p className="mt-5 font-display text-3xl text-forest dark:text-white">{n}</p><p className="text-xs font-bold text-slate-500">{l}</p></div>)}</div>
     <div className="mt-6 grid gap-6 lg:grid-cols-[1.3fr_.7fr]"><section className="paper rounded-[22px] bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="font-extrabold">Your impact is growing</h2><p className="text-xs text-slate-500">Carbon avoided across your ECOSTAY trips</p></div><BarChart3 className="text-leaf"/></div><div className="mt-4 h-64"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData}><defs><linearGradient id="colorV" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4CAF50" stopOpacity={.35}/><stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={.2}/><XAxis dataKey="m" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip/><Area type="monotone" dataKey="v" stroke="#2E7D32" strokeWidth={3} fill="url(#colorV)"/></AreaChart></ResponsiveContainer></div></section><section className="overflow-hidden rounded-[22px] bg-forest p-6 text-white"><p className="text-xs font-bold uppercase tracking-wider text-lime">Next adventure</p><h2 className="mt-3 font-display text-3xl">Monsoon in Coorg</h2><p className="mt-1 text-sm text-white/60">24–27 July · 2 travellers</p><div className="mt-8 space-y-3 text-sm"><p className="flex items-center gap-2"><Check size={16} className="text-lime"/>Stay reserved</p><p className="flex items-center gap-2"><Check size={16} className="text-lime"/>Experience booked</p><p className="flex items-center gap-2 text-white/50"><span className="h-4 w-4 rounded-full border border-white/40"/>Transport pending</p></div><button className="mt-8 w-full rounded-xl bg-white py-3 text-sm font-extrabold text-forest">View trip</button></section></div>
     <section className="mt-12"><SectionHead eyebrow="Picked for you" title="Your next favourite stay" link="See all"/><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{properties.slice(2,5).map(p=><PropertyCard key={p.id} property={p}/>)}</div></section>
+  </main>;
+}
+
+function ResponsiveDashboard() {
+  const { properties } = useCatalog();
+  const dashboardLinks = [
+    [LayoutDashboard, "Overview"],
+    [RouteIcon, "Trips"],
+    [Heart, "Saved stays"],
+    [Palette, "Preferences"],
+  ];
+
+  return <main className="container-page py-8 md:py-10">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[210px_minmax(0,1fr)]">
+      <aside className="paper hidden h-fit rounded-lg border border-black/5 bg-white p-4 dark:border-white/10 xl:block">
+        <p className="px-3 pb-3 text-xs font-extrabold uppercase tracking-[.18em] text-slate-400">Your account</p>
+        <nav aria-label="Dashboard navigation" className="space-y-1">
+          {dashboardLinks.map(([Icon, label], index) => <button key={label} className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-bold transition ${index === 0 ? "bg-[#e9f4d4] text-leaf dark:bg-lime dark:text-forest" : "hover:bg-black/5 dark:hover:bg-white/10"}`}><Icon size={17}/>{label}</button>)}
+        </nav>
+      </aside>
+
+      <div className="min-w-0">
+        <div className="mb-5 flex gap-2 overflow-x-auto pb-1 hide-scrollbar xl:hidden">
+          {dashboardLinks.map(([Icon, label], index) => <button key={label} className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ${index === 0 ? "bg-forest text-white dark:bg-lime dark:text-forest" : "border border-black/10 dark:border-white/15"}`}><Icon size={16}/>{label}</button>)}
+        </div>
+
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+          <div><p className="text-sm text-slate-500">Welcome back, Aditya</p><h1 className="font-display text-4xl text-forest dark:text-white md:text-5xl">Your greener journeys</h1></div>
+          <Link to="/itinerary" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-lime px-5 py-3 text-sm font-extrabold text-forest">Plan a new trip</Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">{[[TentTree,"4","Stays discovered"],[Leaf,"38 kg","CO2 avoided"],[Users,"INR 12.8k","Spent locally"],[Zap,"Silver","Impact level"]].map(([Icon,n,l])=><div className="paper min-w-0 rounded-lg bg-white p-4 md:p-5" key={l}><Icon className="text-leaf" size={20}/><p className="mt-5 break-words font-display text-2xl text-forest dark:text-white md:text-3xl">{n}</p><p className="text-xs font-bold text-slate-500">{l}</p></div>)}</div>
+
+        <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,.7fr)]">
+          <section className="paper min-w-0 rounded-lg bg-white p-4 md:p-5"><div className="flex items-center justify-between gap-4"><div><h2 className="font-extrabold">Your impact is growing</h2><p className="text-xs text-slate-500">Carbon avoided across your ECOSTAY trips</p></div><BarChart3 className="shrink-0 text-leaf"/></div><div className="mt-4 h-64 min-w-0"><ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData}><defs><linearGradient id="responsiveColorV" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#4CAF50" stopOpacity={.35}/><stop offset="95%" stopColor="#4CAF50" stopOpacity={0}/></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} opacity={.2}/><XAxis dataKey="m" axisLine={false} tickLine={false}/><YAxis hide/><Tooltip/><Area type="monotone" dataKey="v" stroke="#2E7D32" strokeWidth={3} fill="url(#responsiveColorV)"/></AreaChart></ResponsiveContainer></div></section>
+          <section className="overflow-hidden rounded-lg bg-forest p-5 text-white md:p-6"><p className="text-xs font-bold uppercase tracking-wider text-lime">Next adventure</p><h2 className="mt-3 font-display text-3xl">Monsoon in Coorg</h2><p className="mt-1 text-sm text-white/60">24-27 July · 2 travellers</p><div className="mt-8 space-y-3 text-sm"><p className="flex items-center gap-2"><Check size={16} className="text-lime"/>Stay reserved</p><p className="flex items-center gap-2"><Check size={16} className="text-lime"/>Experience booked</p><p className="flex items-center gap-2 text-white/50"><span className="h-4 w-4 rounded-full border border-white/40"/>Transport pending</p></div><button className="mt-8 w-full rounded-lg bg-white py-3 text-sm font-extrabold text-forest">View trip</button></section>
+        </div>
+
+        <section className="mt-12"><SectionHead eyebrow="Picked for you" title="Your next favourite stay" link="See all"/><div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">{properties.slice(2,5).map(p=><PropertyCard key={p.id} property={p}/>)}</div></section>
+      </div>
+    </div>
   </main>;
 }
 
@@ -236,11 +307,28 @@ function Footer() {
 }
 
 function App() {
-  const [dark,setDark]=useState(()=>localStorage.getItem("eco-theme")==="dark");
+  const [catalog, setCatalog] = useState(fallbackCatalog);
   const location=useLocation();
-  useEffect(()=>{document.documentElement.classList.toggle("dark",dark);localStorage.setItem("eco-theme",dark?"dark":"light");},[dark]);
   useEffect(()=>window.scrollTo(0,0),[location.pathname]);
-  return <div className="page-surface min-h-screen transition-colors"><Navbar dark={dark} setDark={setDark}/><AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.2}}><Routes><Route path="/" element={<Home/>}/><Route path="/explore" element={<Explore/>}/><Route path="/property/:id" element={<PropertyDetails/>}/><Route path="/assistant" element={<Assistant/>}/><Route path="/experiences" element={<Experiences/>}/><Route path="/itinerary" element={<Itinerary/>}/><Route path="/recommendations" element={<Dashboard/>}/><Route path="/dashboard" element={<Dashboard/>}/><Route path="*" element={<Home/>}/></Routes></motion.div></AnimatePresence><Footer/></div>;
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchCatalog(controller.signal)
+      .then((nextCatalog) => setCatalog({
+        properties: nextCatalog.properties.length ? nextCatalog.properties : fallbackProperties,
+        destinations: nextCatalog.destinations.length ? nextCatalog.destinations : fallbackDestinations,
+        experiences: nextCatalog.experiences.length ? nextCatalog.experiences : fallbackExperiences,
+      }))
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.info("[catalog] using bundled sample data");
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  return <CatalogContext.Provider value={catalog}><div className="page-surface min-h-screen overflow-x-clip transition-colors"><Navbar/><AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.2}}><Routes><Route path="/" element={<Home/>}/><Route path="/login" element={<Login/>}/><Route path="/explore" element={<Explore/>}/><Route path="/property/:id" element={<PropertyDetails/>}/><Route path="/assistant" element={<Assistant/>}/><Route path="/experiences" element={<Experiences/>}/><Route path="/itinerary" element={<Itinerary/>}/><Route path="/component-showcase" element={<ComponentShowcase/>}/><Route path="/recommendations" element={<Dashboard/>}/><Route path="/dashboard" element={<ResponsiveDashboard/>}/><Route path="*" element={<Home/>}/></Routes></motion.div></AnimatePresence><Footer/></div></CatalogContext.Provider>;
 }
 
 export default App;

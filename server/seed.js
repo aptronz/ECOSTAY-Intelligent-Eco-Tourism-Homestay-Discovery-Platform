@@ -1,6 +1,6 @@
 import "dotenv/config";
 import mongoose from "mongoose";
-import { destinations, experiences, properties } from "../src/data.js";
+import { destinations, experiences, stays as properties } from "../backend/data/catalogData.js";
 import { connectDatabase } from "./db.js";
 import { Destination } from "./models/Destination.js";
 import { Experience } from "./models/Experience.js";

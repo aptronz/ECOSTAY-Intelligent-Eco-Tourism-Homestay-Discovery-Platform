@@ -9,7 +9,7 @@ export default [
     ignores: ["dist/**", "node_modules/**"],
   },
   {
-    files: ["src/**/*.{js,jsx}", "server/**/*.js", "vite.config.js"],
+    files: ["src/**/*.{js,jsx}", "server/**/*.js", "backend/**/*.js", "vite.config.js"],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: "module",

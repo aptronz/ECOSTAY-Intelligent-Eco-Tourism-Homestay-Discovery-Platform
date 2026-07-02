@@ -9,7 +9,7 @@ const processes = [
     cwd: rootDirectory,
     stdio: "inherit",
   }),
-  spawn(process.execPath, ["--watch", path.join(rootDirectory, "server", "index.js")], {
+  spawn(process.execPath, ["--watch", path.join(rootDirectory, "backend", "server.js")], {
     cwd: rootDirectory,
     stdio: "inherit",
   }),

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, BarChart3, CalendarDays, Check, ChevronDown, ChevronRight,
@@ -8,23 +8,16 @@ import {
 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { fetchCatalog } from "./api";
-import {
-  destinations as fallbackDestinations,
-  experiences as fallbackExperiences,
-  properties as fallbackProperties,
-} from "./data";
+import { createBooking, fetchCatalog } from "./api";
 import useDarkMode from "./hooks/useDarkMode";
+import Loader from "./components/ui/Loader";
+import Toast from "./components/ui/Toast";
 import ComponentShowcase from "./pages/ComponentShowcase";
 import Login from "./pages/Login";
 
 const fadeUp = { initial: { opacity: 0, y: 18 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true }, transition: { duration: .55 } };
-const fallbackCatalog = {
-  properties: fallbackProperties,
-  destinations: fallbackDestinations,
-  experiences: fallbackExperiences,
-};
-const CatalogContext = createContext(fallbackCatalog);
+const emptyCatalog = { properties: [], destinations: [], experiences: [], status: "idle", error: "" };
+const CatalogContext = createContext(emptyCatalog);
 const useCatalog = () => useContext(CatalogContext);
 const formatMoney = (value) => `₹${value.toLocaleString("en-IN")}`;
 
@@ -83,6 +76,18 @@ function EcoBadge({ score }) {
 
 function Rating({ rating, reviews }) {
   return <span className="inline-flex items-center gap-1 text-sm font-bold"><Star size={14} fill="#f2b84b" color="#f2b84b"/>{rating}{reviews && <span className="font-medium text-slate-500">({reviews})</span>}</span>;
+}
+
+function CatalogStatus({ status, error, onRetry }) {
+  if (status === "loading") {
+    return <div className="fixed bottom-5 left-1/2 z-[100] flex -translate-x-1/2 items-center gap-3 rounded-full bg-forest px-4 py-3 text-sm font-bold text-white shadow-xl dark:bg-lime dark:text-forest"><Loader size="sm"/>Loading ECOSTAY catalog</div>;
+  }
+
+  if (status === "error") {
+    return <div role="alert" className="container-page mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span>{error}</span><button onClick={onRetry} className="self-start rounded-full bg-red-900 px-4 py-2 text-xs font-extrabold text-white dark:bg-red-100 dark:text-red-950">Retry</button></div></div>;
+  }
+
+  return null;
 }
 
 function PropertyCard({ property, horizontal = false }) {
@@ -193,10 +198,36 @@ function Explore() {
 }
 
 function PropertyDetails() {
-  const { properties } = useCatalog();
+  const { properties, status } = useCatalog();
   const { id } = useParams();
-  const property = properties.find(p=>p.id===id) || properties[0];
+  const property = properties.find(p=>p.id===id);
   const [guests,setGuests] = useState(2);
+  const [checkIn,setCheckIn] = useState("");
+  const [checkOut,setCheckOut] = useState("");
+  const [bookingState,setBookingState] = useState({ status: "idle", message: "" });
+
+  const reserve = async () => {
+    setBookingState({ status: "loading", message: "" });
+
+    try {
+      await createBooking({
+        stayId: property.id,
+        guestName: "Aditya",
+        guestEmail: "aditya@example.com",
+        checkIn,
+        checkOut,
+        guests,
+      });
+      setBookingState({ status: "success", message: "Stay reserved successfully." });
+    } catch (error) {
+      setBookingState({ status: "error", message: error.message });
+    }
+  };
+
+  if (!property) {
+    return <main className="container-page py-16"><Link to="/explore" className="mb-5 inline-flex items-center gap-2 text-sm font-bold"><ArrowLeft size={17}/>Back to explore</Link><div className="paper rounded-[22px] bg-white p-8 text-center"><h1 className="font-display text-4xl text-forest dark:text-white">{status === "loading" ? "Loading stay..." : "Stay not found"}</h1><p className="mt-3 text-sm text-slate-500">{status === "loading" ? "Fetching the latest property details from the API." : "This property is not available in the current catalog."}</p></div></main>;
+  }
+
   return <main className="container-page py-8">
     <Link to="/explore" className="mb-5 inline-flex items-center gap-2 text-sm font-bold"><ArrowLeft size={17}/>Back to explore</Link>
     <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-end"><div><h1 className="font-display text-4xl text-forest dark:text-white md:text-5xl">{property.name}</h1><p className="mt-2 flex flex-wrap items-center gap-3 text-sm"><Rating rating={property.rating} reviews={property.reviews}/><span className="flex items-center gap-1 text-slate-500"><MapPin size={15}/>{property.location}</span></p></div><button className="flex items-center gap-2 self-start rounded-full border px-4 py-2 text-sm font-bold"><Heart size={17}/>Save</button></div>
@@ -209,7 +240,7 @@ function PropertyDetails() {
         <div className="py-7"><h2 className="text-xl font-extrabold">Sustainability, made visible</h2><div className="mt-5 grid gap-3 sm:grid-cols-3">{[["94","Eco score"],["82%","Local sourcing"],["100%","Renewable energy"]].map(([n,l])=><div key={l} className="paper rounded-2xl bg-white p-5"><p className="font-display text-4xl text-leaf">{n}</p><p className="mt-1 text-xs font-bold text-slate-500">{l}</p></div>)}</div></div>
         <div className="paper rounded-[22px] bg-white p-6"><div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-lime text-forest"><Sparkles size={18}/></span><div><h3 className="font-extrabold">Guests leave feeling restored</h3><p className="text-xs text-slate-500">AI sentiment summary from 128 verified reviews</p></div></div><p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">Visitors consistently praise the thoughtful hosts, peaceful orchard setting, and exceptional home-cooked food. The road in is narrow, but guests say the view is more than worth it.</p></div>
       </div>
-      <aside className="paper soft-shadow sticky top-24 h-fit rounded-[22px] bg-white p-5"><p><b className="text-2xl">{formatMoney(property.price)}</b> / night</p><div className="mt-5 grid grid-cols-2 overflow-hidden rounded-xl border"><label className="p-3 text-[10px] font-bold uppercase">Check in<input type="date" className="mt-1 block w-full text-xs font-medium"/></label><label className="border-l p-3 text-[10px] font-bold uppercase">Check out<input type="date" className="mt-1 block w-full text-xs font-medium"/></label><div className="col-span-2 flex items-center justify-between border-t p-3 text-xs font-bold"><span>Guests</span><span className="flex items-center gap-3"><button onClick={()=>setGuests(Math.max(1,guests-1))}><Minus size={14}/></button>{guests}<button onClick={()=>setGuests(guests+1)}><Plus size={14}/></button></span></div></div><button className="mt-4 w-full rounded-xl bg-lime py-3.5 font-extrabold text-forest">Reserve your stay</button><p className="mt-3 text-center text-xs text-slate-400">You won’t be charged yet</p><div className="mt-5 space-y-3 border-t pt-5 text-sm"><p className="flex justify-between"><span>₹4,200 × 3 nights</span><span>₹12,600</span></p><p className="flex justify-between"><span>Community contribution</span><span>₹630</span></p><p className="flex justify-between border-t pt-3 font-extrabold"><span>Total</span><span>₹13,230</span></p></div></aside>
+      <aside className="paper soft-shadow sticky top-24 h-fit rounded-[22px] bg-white p-5"><p><b className="text-2xl">{formatMoney(property.price)}</b> / night</p><div className="mt-5 grid grid-cols-2 overflow-hidden rounded-xl border"><label className="p-3 text-[10px] font-bold uppercase">Check in<input type="date" value={checkIn} onChange={e=>setCheckIn(e.target.value)} className="mt-1 block w-full text-xs font-medium"/></label><label className="border-l p-3 text-[10px] font-bold uppercase">Check out<input type="date" value={checkOut} onChange={e=>setCheckOut(e.target.value)} className="mt-1 block w-full text-xs font-medium"/></label><div className="col-span-2 flex items-center justify-between border-t p-3 text-xs font-bold"><span>Guests</span><span className="flex items-center gap-3"><button onClick={()=>setGuests(Math.max(1,guests-1))}><Minus size={14}/></button>{guests}<button onClick={()=>setGuests(guests+1)}><Plus size={14}/></button></span></div></div><button onClick={reserve} disabled={bookingState.status==="loading"} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-lime py-3.5 font-extrabold text-forest disabled:opacity-70">{bookingState.status==="loading"&&<Loader size="sm"/>}{bookingState.status==="loading"?"Reserving...":"Reserve your stay"}</button>{bookingState.message&&<p className={`mt-3 text-center text-xs font-bold ${bookingState.status==="error"?"text-red-600":"text-leaf"}`}>{bookingState.message}</p>}<p className="mt-3 text-center text-xs text-slate-400">You won’t be charged yet</p><div className="mt-5 space-y-3 border-t pt-5 text-sm"><p className="flex justify-between"><span>₹4,200 × 3 nights</span><span>₹12,600</span></p><p className="flex justify-between"><span>Community contribution</span><span>₹630</span></p><p className="flex justify-between border-t pt-3 font-extrabold"><span>Total</span><span>₹13,230</span></p></div></aside>
     </div>
     <section className="py-16"><SectionHead eyebrow="Stay a little longer" title="Similar places nearby"/><div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{properties.filter(p=>p.id!==property.id).slice(0,3).map(p=><PropertyCard key={p.id} property={p}/>)}</div></section>
   </main>;
@@ -307,28 +338,36 @@ function Footer() {
 }
 
 function App() {
-  const [catalog, setCatalog] = useState(fallbackCatalog);
+  const [catalog, setCatalog] = useState(emptyCatalog);
+  const [toast, setToast] = useState({ isOpen: false, type: "info", message: "" });
   const location=useLocation();
   useEffect(()=>window.scrollTo(0,0),[location.pathname]);
-  useEffect(() => {
+
+  const loadCatalog = useCallback(() => {
     const controller = new AbortController();
 
+    setCatalog((currentCatalog) => ({ ...currentCatalog, status: "loading", error: "" }));
+
     fetchCatalog(controller.signal)
-      .then((nextCatalog) => setCatalog({
-        properties: nextCatalog.properties.length ? nextCatalog.properties : fallbackProperties,
-        destinations: nextCatalog.destinations.length ? nextCatalog.destinations : fallbackDestinations,
-        experiences: nextCatalog.experiences.length ? nextCatalog.experiences : fallbackExperiences,
-      }))
+      .then((nextCatalog) => {
+        setCatalog({ ...nextCatalog, status: "success", error: "" });
+        setToast({ isOpen: true, type: "success", message: "Catalog loaded from backend API." });
+      })
       .catch((error) => {
         if (error.name !== "AbortError") {
-          console.info("[catalog] using bundled sample data");
+          setCatalog({ ...emptyCatalog, status: "error", error: error.message || "Unable to load catalog from backend." });
+          setToast({ isOpen: true, type: "error", message: "Could not load catalog from backend." });
         }
       });
 
     return () => controller.abort();
   }, []);
 
-  return <CatalogContext.Provider value={catalog}><div className="page-surface min-h-screen overflow-x-clip transition-colors"><Navbar/><AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.2}}><Routes><Route path="/" element={<Home/>}/><Route path="/login" element={<Login/>}/><Route path="/explore" element={<Explore/>}/><Route path="/property/:id" element={<PropertyDetails/>}/><Route path="/assistant" element={<Assistant/>}/><Route path="/experiences" element={<Experiences/>}/><Route path="/itinerary" element={<Itinerary/>}/><Route path="/component-showcase" element={<ComponentShowcase/>}/><Route path="/recommendations" element={<Dashboard/>}/><Route path="/dashboard" element={<ResponsiveDashboard/>}/><Route path="*" element={<Home/>}/></Routes></motion.div></AnimatePresence><Footer/></div></CatalogContext.Provider>;
+  useEffect(() => {
+    return loadCatalog();
+  }, [loadCatalog]);
+
+  return <CatalogContext.Provider value={catalog}><div className="page-surface min-h-screen overflow-x-clip transition-colors"><Navbar/><CatalogStatus status={catalog.status} error={catalog.error} onRetry={loadCatalog}/><Toast isOpen={toast.isOpen} type={toast.type} message={toast.message} onClose={()=>setToast({...toast,isOpen:false})}/><AnimatePresence mode="wait"><motion.div key={location.pathname} initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} transition={{duration:.2}}><Routes><Route path="/" element={<Home/>}/><Route path="/login" element={<Login/>}/><Route path="/explore" element={<Explore/>}/><Route path="/property/:id" element={<PropertyDetails/>}/><Route path="/assistant" element={<Assistant/>}/><Route path="/experiences" element={<Experiences/>}/><Route path="/itinerary" element={<Itinerary/>}/><Route path="/component-showcase" element={<ComponentShowcase/>}/><Route path="/recommendations" element={<Dashboard/>}/><Route path="/dashboard" element={<ResponsiveDashboard/>}/><Route path="*" element={<Home/>}/></Routes></motion.div></AnimatePresence><Footer/></div></CatalogContext.Provider>;
 }
 
 export default App;

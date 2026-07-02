@@ -1,4 +1,6 @@
 .env
+.env.local
+backend/.env
 dist
 node_modules
 npm-debug.log*

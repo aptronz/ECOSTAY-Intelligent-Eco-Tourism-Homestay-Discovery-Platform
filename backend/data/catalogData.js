@@ -1,4 +1,4 @@
-export const properties = [
+export const stays = [
   {
     id: "pahadi",
     name: "Pahadi House",
@@ -88,3 +88,5 @@ export const experiences = [
   { title: "Cook a Kumaoni lunch", type: "Local food", place: "Almora", price: 1250, rating: 5.0, image: "https://images.unsplash.com/photo-1556911220-bff31c812dba?auto=format&fit=crop&w=900&q=85" },
   { title: "Meet the forest keepers", type: "Community", place: "Wayanad", price: 750, rating: 4.8, image: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=900&q=85" },
 ];
+
+export const bookings = [];

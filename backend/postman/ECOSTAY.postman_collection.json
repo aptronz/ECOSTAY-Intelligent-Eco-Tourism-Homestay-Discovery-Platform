@@ -1,0 +1,247 @@
+{
+  "info": {
+    "name": "ECOSTAY Week 4 API",
+    "description": "Postman collection for the ECOSTAY in-memory Express REST API.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5000/api"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/health" },
+          "status": "OK",
+          "code": 200,
+          "body": "{\"success\":true,\"service\":\"ecostay-api\",\"storage\":\"in-memory\",\"timestamp\":\"2026-06-28T00:00:00.000Z\"}"
+        }
+      ]
+    },
+    {
+      "name": "List Stays",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/stays?minScore=88&sortBy=score"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/stays?minScore=88&sortBy=score" },
+          "status": "OK",
+          "code": 200,
+          "body": "[{\"id\":\"earthsong\",\"name\":\"Earthsong Farmstay\",\"location\":\"Coorg, Karnataka\",\"price\":5100,\"rating\":4.9,\"reviews\":74,\"score\":97,\"tag\":\"Top eco score\"}]"
+        }
+      ]
+    },
+    {
+      "name": "Search Stays",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/stays/search?q=tirthan"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/stays/search?q=tirthan" },
+          "status": "OK",
+          "code": 200,
+          "body": "[{\"id\":\"wildflower\",\"name\":\"Wildflower Retreat\",\"location\":\"Tirthan Valley, Himachal\"}]"
+        },
+        {
+          "name": "400 Missing Query",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/stays/search" },
+          "status": "Bad Request",
+          "code": 400,
+          "body": "{\"success\":false,\"message\":\"Search query parameter q is required\"}"
+        }
+      ]
+    },
+    {
+      "name": "Get Single Stay",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/stays/pahadi"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/stays/pahadi" },
+          "status": "OK",
+          "code": 200,
+          "body": "{\"id\":\"pahadi\",\"name\":\"Pahadi House\",\"location\":\"Mukteshwar, Uttarakhand\",\"price\":4200,\"rating\":4.9,\"reviews\":128,\"score\":94}"
+        },
+        {
+          "name": "404 Not Found",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/stays/unknown" },
+          "status": "Not Found",
+          "code": 404,
+          "body": "{\"success\":false,\"message\":\"Stay not found\"}"
+        }
+      ]
+    },
+    {
+      "name": "Get Single Review",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/reviews/pahadi-review-1"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/reviews/pahadi-review-1" },
+          "status": "OK",
+          "code": 200,
+          "body": "{\"id\":\"pahadi-review-1\",\"stayId\":\"pahadi\",\"guestName\":\"Ananya R.\",\"rating\":5,\"comment\":\"The orchard breakfasts and Himalayan views were unforgettable. Hosts were thoughtful and warm.\",\"date\":\"2026-05-12\"}"
+        },
+        {
+          "name": "404 Not Found",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/reviews/unknown" },
+          "status": "Not Found",
+          "code": 404,
+          "body": "{\"success\":false,\"message\":\"Review not found\"}"
+        }
+      ]
+    },
+    {
+      "name": "Create Stay",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"id\":\"bamboo-haven\",\"name\":\"Bamboo Haven\",\"location\":\"Wayanad, Kerala\",\"price\":3900,\"rating\":4.8,\"reviews\":42,\"score\":93,\"tag\":\"Forest stay\",\"image\":\"https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=85\",\"description\":\"A quiet bamboo cottage run by a local family near forest trails.\"}"
+        },
+        "url": "{{baseUrl}}/stays"
+      },
+      "response": [
+        {
+          "name": "201 Created",
+          "originalRequest": { "method": "POST", "url": "{{baseUrl}}/stays" },
+          "status": "Created",
+          "code": 201,
+          "body": "{\"id\":\"bamboo-haven\",\"name\":\"Bamboo Haven\",\"location\":\"Wayanad, Kerala\",\"price\":3900,\"rating\":4.8,\"reviews\":42,\"score\":93,\"tag\":\"Forest stay\"}"
+        }
+      ]
+    },
+    {
+      "name": "Update Stay",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\"price\":4100,\"score\":95}" },
+        "url": "{{baseUrl}}/stays/bamboo-haven"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "PATCH", "url": "{{baseUrl}}/stays/bamboo-haven" },
+          "status": "OK",
+          "code": 200,
+          "body": "{\"id\":\"bamboo-haven\",\"price\":4100,\"score\":95}"
+        }
+      ]
+    },
+    {
+      "name": "Delete Stay",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/stays/bamboo-haven"
+      },
+      "response": [
+        {
+          "name": "204 No Content",
+          "originalRequest": { "method": "DELETE", "url": "{{baseUrl}}/stays/bamboo-haven" },
+          "status": "No Content",
+          "code": 204,
+          "body": ""
+        }
+      ]
+    },
+    {
+      "name": "List Destinations",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/destinations"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/destinations" },
+          "status": "OK",
+          "code": 200,
+          "body": "[{\"name\":\"Sikkim\",\"meta\":\"29 mountain stays\"},{\"name\":\"Spiti\",\"meta\":\"18 village homes\"}]"
+        }
+      ]
+    },
+    {
+      "name": "List Experiences",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/experiences?type=Local"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/experiences?type=Local" },
+          "status": "OK",
+          "code": 200,
+          "body": "[{\"title\":\"Forage & feast with Maya\",\"type\":\"Local food\",\"place\":\"Coorg\",\"price\":1450,\"rating\":4.9}]"
+        }
+      ]
+    },
+    {
+      "name": "List Bookings",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/bookings"
+      },
+      "response": [
+        {
+          "name": "200 OK",
+          "originalRequest": { "method": "GET", "url": "{{baseUrl}}/bookings" },
+          "status": "OK",
+          "code": 200,
+          "body": "[]"
+        }
+      ]
+    },
+    {
+      "name": "Create Booking",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"stayId\":\"pahadi\",\"guestName\":\"Aditya\",\"guestEmail\":\"aditya@example.com\",\"checkIn\":\"2026-07-12\",\"checkOut\":\"2026-07-15\",\"guests\":2}"
+        },
+        "url": "{{baseUrl}}/bookings"
+      },
+      "response": [
+        {
+          "name": "201 Created",
+          "originalRequest": { "method": "POST", "url": "{{baseUrl}}/bookings" },
+          "status": "Created",
+          "code": 201,
+          "body": "{\"id\":\"booking-1780000000000\",\"status\":\"confirmed\",\"stayId\":\"pahadi\",\"guestName\":\"Aditya\",\"guestEmail\":\"aditya@example.com\",\"checkIn\":\"2026-07-12\",\"checkOut\":\"2026-07-15\",\"guests\":2}"
+        },
+        {
+          "name": "400 Validation Error",
+          "originalRequest": { "method": "POST", "url": "{{baseUrl}}/bookings" },
+          "status": "Bad Request",
+          "code": 400,
+          "body": "{\"success\":false,\"message\":\"Invalid booking payload\",\"errors\":[\"checkOut must be after checkIn\"]}"
+        }
+      ]
+    }
+  ]
+}
